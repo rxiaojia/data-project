@@ -5,12 +5,57 @@ format: pdf
 ---
 
 ## Introduction and Data
-```{r message=FALSE,warning=F,echo=FALSE}
+
+**Research Question**: How to Predict Secondary School Students' Weekend Alcohol Consumption Level Using Family, School and Personal Information? 
+
+**Project Motivation**: According to a CDC (2024) report about underage drinking, underage drinking is a significant public health problem in the U.S. The 2021 Youth Risk Behavior Survey found that underage drinking is more common than we think among high school students. In specific, among all high school students during the past month, 23% drank alcohol, 11% binge drank, 5% of drivers drove after drinking alcohol, and 14% rode with a driver who had been drinking alcohol. Underage Drinking has posed great risks to teenagers' health, safety, and school performance. The Substance Abuse and Mental Health Services Administration (2022) identified several reasons why teenagers might engage in underage drinking activities including stress from school, peer pressure to drink, life transitions such as breakups and school transfers, and family environment. Given the alarming statistics on underage drinking among high school students reported by the CDC, this project aims to predict secondary school students' weekend alcohol consumption levels using family, school, and personal information, which are potential reasons identified by Substance Abuse and Mental Health Services Administration for why teenagers start consuming alcohol. 
+
+**Data Introduction**: 
+The data is obtained from the survey responses of students enrolled in Portuguese language courses in secondary schools in Portugal (UCI Machine Learning, 2016). It contains many variables including socioeconomic status, family status, and school performance information about the students. The key variables that I have chosen for the analysis purpose of the project are listed as follows: 
+
+
+**Response Variable**
+
+Walc - weekend alcohol consumption (categorical: from 1 - very low, 2 - low, 3 - medium, 4 - high to 5 - very high)
+
+**Predictors**
+
+Pstatus - parent's cohabitation status (binary: 'T' - living together or 'A' - apart)
+
+famsize - family size (binary: 'LE3' - less or equal to 3 or 'GT3' - greater than 3)
+
+absences - number of school absences (numeric: from 0 to 93)
+
+studytime - weekly study time (categorical: 1 - <2 hours, 2 - 2 to 5 hours, 3 - 5 to 10 hours, or 4 - >10 hours)
+
+G3 - final grade of the Portuguese class (numeric: from 0 to 20)
+
+romantic - whether the student is in a romantic relationship (binary: yes or no)
+
+goout - going out with friends (categorical: from 1 - very low, 2 - low, 3 - medium, 4 - high to 5 - very high)
+
+health - current health status (numeric: from 1 - very bad to 5 - very good)
+
+**Data Cleaning**: The outcome variable's categories are renamed from 1 to very low, 2 to low, 3 to medium, 4 to high, and 5 to very high for better visualization and analysis purposes.
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, results= 'hide'}
+## Summary Statistics of Response Variable
 library(readr)
 alcohol <- read_csv("student-por.csv")
 
-frequencies <- table(alcohol$Walc)
+if(!is.factor(alcohol$Walc)) {
+  alcohol$Walc <- factor(alcohol$Walc)
+}
 
+
+levels_desc <- c("very low", "low", "medium", "high", "very high")
+
+
+alcohol$Walc <- factor(alcohol$Walc, levels = 1:5, labels = levels_desc)
+
+
+
+frequencies <- table(alcohol$Walc)
 proportions <- prop.table(frequencies)
 
 mode_value <- function(x) {
@@ -28,19 +73,68 @@ output_matrix[, 4] <- rep(as.character(mode_Walc), length(frequencies))
 
 dimnames(output_matrix) <- list(NULL, c("Category", "Frequency", "Proportion", "Mode"))
 
-print("Summary Statistics of Weekend Alcohol Consumption")
-print(output_matrix)
+print("Summary Statistics of Weekend Alcohol Consumption")  
+print(output_matrix)  
 
+```
+
+```{r table-simple, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
+# forming a table of the summary statistics of the response variable
+library(pander)
+
+panderOptions('table.split.table', Inf)
+
+data <- data.frame(
+  Category = c("very low", "low", "medium", "high", "very high"),
+  Frequency = c("247", "150", "120", "87", "45"),
+  Proportion = c("0.3806", "0.2311", "0.1849", "0.1341", "0.0693"),
+  Mode = c("1", "1", "1", "1", "1")
+)
+
+data$Category <- as.character(data$Category)
+data$Frequency <- as.character(data$Frequency)
+data$Proportion <- as.character(data$Proportion)
+data$Mode <- as.character(data$Mode)
+
+pander(data, style = 'rmarkdown', caption = "Summary Statistics of Weekend Alcohol Consumption")
+
+```
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+## EDA plots of the response variable
+library(ggplot2)
+ggplot(alcohol, aes(x = Walc)) + 
+  geom_histogram(stat = "count", fill = "lightblue", color = "grey") +
+  geom_text(stat = 'count', aes(label = ..count..), vjust = -0.5, color = "black", size = 3) +
+  geom_text(aes(x = as.numeric(levels(Walc))[mean(as.numeric(as.character(Walc)), na.rm = TRUE)],
+                label = sprintf("Mean: %.2f", mean(as.numeric(as.character(Walc)), na.rm = TRUE)), 
+                y = Inf), vjust = -0.5, color = "red", size = 3.5) +
+  labs(title = "                Weekend Alcohol Consumption Level",
+       x = "Weekend Alcohol Consumption Level",
+       y = "Frequency")
+
+```
+
+From the summary statistics and the histogram of the weekend alcohol consumption level, we can conclude that the most common alcohol consumption level on weekends for secondary school students is "very low", with a frequency of 247.
+There is also a decrease in frequency as the consumption level increases. 
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+## Plots of other variables and interesting relationships
 library(ggplot2)
 
 alcohol$Walc <- factor(alcohol$Walc)
 ggplot(alcohol, aes(x = G3, y = Walc)) +
   geom_boxplot() +
-  labs(title = "Weekend Alcohol Consumption by Final Portuguese Grade" ,
+  labs(title = "Weekend Alcohol Consumption by Portuguese Grade" ,
        x = "Final Portuguese Grade",
        y = "Weekend Alcohol Consumption Level") +
   theme_bw()  
+```
 
+Examining the boxplot of weekend alcohol consumption by final Portuguese grade, we can see that the higher the weekend alcohol consumption level is, the lower the median final Portuguese grade is, potentially suggesting that worse academic performances at school are associated with higher weekend alcohol consumption levels.
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+#Plots
+library(ggplot2)
 library(dplyr)
 library(scales)  
 
@@ -53,67 +147,18 @@ ggplot(alcohol1, aes(x = sex, y = Proportion, fill = Walc)) +
   geom_bar(stat = "identity", position = "fill") +
   scale_y_continuous(labels = scales::percent) +
   labs(
-    title = "Proportion of Alcohol Consumption Levels by Gender",  
+    title = "Proportion of Weekend Alcohol Consumption by Gender",  
     x = "Gender",
     y = "Proportion",
     fill = "Weekend Alcohol Consumption"
   ) 
-
-
-ggplot(alcohol, aes(x = Walc)) + 
-  geom_histogram(stat = "count", fill = "lightblue", color = "grey") +
-  geom_text(stat = 'count', aes(label = ..count..), vjust = -0.5, color = "black", size = 3) +
-  geom_text(aes(x = as.numeric(levels(Walc))[mean(as.numeric(as.character(Walc)), na.rm = TRUE)],
-                label = sprintf("Mean: %.2f", mean(as.numeric(as.character(Walc)), na.rm = TRUE)), 
-                y = Inf), vjust = -0.5, color = "red", size = 3.5) +
-  labs(title = "Histogram of Walc Rating with Frequency Labels",
-       x = "Walc Rating",
-       y = "Frequency")
-
-
 ```
-Research Question: How to Predict Secondary School Students' Weekend Alcohol Consumption Level Using Family, School and Personal Information? 
-
-Project Motivation: According to a CDC (2024) report about underage drinking, underage drinking is a significant public health problem in the U.S.
-The 2021 Youth Risk Behavior Survey found that among high school students, during the past 30 days, 23% drank alcohol, 11% binge drank, 5% of drivers drove after drinking alcohol, and 14% rode with a driver who had been drinking alcohol. Underage Drinking has posed great risks to teenagers' health, safety, and school performance. Shocked by the statisitcs in the report, this project tries to predict secondary school students' weekend alcohol consumption level using family, school and personal information
-
-Data Introduction: 
-The data is obtained from the survey responses of students enrolled in the Portuguese language courses in secondary schools in Portugal. It contains many predictors including the socioeconomic information about the students. The key variables that I have chosen for the analysis purpose of the project are listed as follows: 
-
-
-**Response Variable**
-
-Walc - weekend alcohol consumption (categorical: from 1 - very low, 2 - low, 3 - medium, 4 - high to 5 - very high)
-
-**Predictors**
-
-Pstatus - parent's cohabitation status (binary: 'T' - living together or 'A' - apart)
-
-famsize - family size (binary: 'LE3' - less or equal to 3 or 'GT3' - greater than 3)
-
-absences - number of school absences (numeric: from 0 to 93)
-
-studytime - weekly study time (caregorical: 1 - <2 hours, 2 - 2 to 5 hours, 3 - 5 to 10 hours, or 4 - >10 hours)
-
-G3 - final grade of the Portugese class (numeric: from 0 to 20)
-
-romantic - whether the student is in a romantic relationship (binary: yes or no)
-
-goout - going out with friends (categorical: from 1 - very low, 2 - low, 3 - medium, 4 - high to 5 - very high)
-
-health - current health status (numeric: from 1 - very bad to 5 - very good)
-
-Examing the graphs, we can see that male secondary school students seem to more alcohol than female students.
-
-Citations:
-https://www.kaggle.com/datasets/uciml/student-alcohol-consumption
-
-https://www.cdc.gov/alcohol/fact-sheets/underage-drinking.htm
-
+Examining the proportion of weekend alcohol consumption levels by gender graph, we can see that male secondary school students seem to consume more alcohol than female students in general.
 
 ## Methodology
-```{r essage=FALSE,warning=F,echo=FALSE}
 
+```{r message=FALSE,warning=F,echo=F,, results= 'hide'}
+#model and assumptions
 library(MASS)
 
 alcohol$studytime <- factor(alcohol$studytime)
@@ -124,25 +169,88 @@ model1 <- polr(factor(Walc) ~ Pstatus + famsize + absences +
                  studytime + G3 + romantic + health+
                  goout , data = alcohol)
 summary(model1)
+summary_model1 <- summary(model1)
 
-install.packages("brant")
+ 
+
 library(brant)
 brant::brant(model1)
+```
 
+```{r message=FALSE,warning=F,echo=F}
+## table for test results
+library(pander)
+
+panderOptions('table.split.table', Inf)
+panderOptions('table.style', 'rmarkdown')
+
+test_results <- data.frame(
+  Test = c("Omnibus", "parents are living together", "family size less or equal to 3", "number of absences", "weekly study time 2 to 5 hours ", "weekly study time 5 to 10 hours",
+           "weekly study time larger than 10 hours", "final grade of the Portugese class", "the student is in a romantic relationship", "bad current health status", "medium current health status", "good current health status", "very good current health status",
+           "time going out with friends is low", "time going out with friends is medium", "time going out with friends is high", "time going out with friends is very high"),
+  X2 = c(59.88, 3.17, 0.92, 0.9, 6.16, 6.06, 5.71, 1.79, 2.22, 2.25, 3.01, 2.17, 0.82, 2.21, 3.37, 0.34, 0.21),
+  df = c(48,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3),
+  Probability = c(0.12, 0.37, 0.82, 0.83, 0.1, 0.11, 0.13, 0.62, 0.53, 0.52, 0.39, 0.54, 0.84, 0.53, 0.34, 0.95, 0.98)
+)
+
+
+caption <- "Brant-Wald Test Results for Proportional Odds Assumption"
+pander(test_results, caption = caption)
 
 ```
-The model that I fit here is an ordinal regression model. The reason why I chose to fit a ordinal regression model is that the response variable Walc - weekend alcohol consumption is an ordered and categorical variable, which satisfies the outcome requirement for an ordinal regression model. The predictors that I considered are from three perspective, respondent's family status, school performace, and personal factors. I carefully reviewed all of the columns in the dataset and picked out 2 predictors for family status and 3 for two other perspectives, a total of 8 predictors. 
 
-I used the Brant-Wald test to test proportional odds assumption and we can see from the output that the p value for Omnibus	and all of the other predictors are larger than 0.05, this means that fail to reject H0: proportional odds assumtpion holds, suggesting that proportional odds assumption does hold. 
+In this study, an ordinal regression model was employed to analyze the weekend alcohol consumption levels among secondary school students. The reason to employ an ordinal regression model is that the response variable, Walc - weekend alcohol consumption, is an ordered and categorical variable, which satisfies the outcome requirement for an ordinal regression model. The predictors considered for this model are from three categories, respondent's family status, school performance, and personal factors. After a careful and thorough examination of the dataset, two predictors were selected to represent family status or environment, and three predictors were selected to represent school performance and personal factors, resulting in a total of eight predictors.
 
-Citations: 
-https://peopleanalytics-regression-book.org/ord-reg.html#wald
+The proportional odds assumption, a critical assumption for the validity of ordinal regression, was tested using the Brant-Wald test. The results indicated that the p-values for Omnibus and all individual predictors are larger than 0.05. This outcome suggests that we fail to reject the null hypothesis, thereby supporting the assumption that the proportional odds condition is satisfied within this model (McNulty, 2021).
 
 
-```{r messgae=F, warning=FALSE, echo=FALSE}
+## Results
 
-coefficients_summary <- summary(model1)$coefficients
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+# Regression Results table
 
+library(pander)
+
+panderOptions('table.split.table', Inf)
+panderOptions('table.style', 'rmarkdown')
+
+coefficients <- data.frame(
+  Predictors = c("parents are living together", "family size less or equal to 3", "number of absences", 
+           "weekly study time 2 to 5 hours", "weekly study time 5 to 10 hours",
+           "weekly study time larger than 10 hours", "final grade of the Portuguese class", 
+           "the student is in a romantic relationship", "bad current health status", 
+           "medium current health status", "good current health status", 
+           "very good current health status", "time going out with friends is low", 
+           "time going out with friends is medium", "time going out with friends is high", 
+           "time going out with friends is very high"),
+  Value = sprintf("%.4f", c(0.6023, 0.5002, 0.0497, -0.5912, -0.7949, -1.0786, -0.0522,
+                            -0.0964, 0.4404, 0.5543, 0.5866, 0.6762, 0.8550, 1.4044, 2.0148, 2.8051)),
+  `std.error` = sprintf("%.4f", c(0.2429, 0.1638, 0.0159, 0.1717, 0.2406, 0.3807, 0.0244,
+                                   0.1559, 0.2935, 0.2715, 0.2775, 0.2399, 0.3608, 0.3466, 0.3626, 0.3737)),
+  `t_value` = sprintf("%.4f", c(2.480, 3.053, 3.123, -3.442, -3.303, -2.834, -2.141,
+                                -0.618, 1.501, 2.042, 2.114, 2.819, 2.370, 4.052, 5.556, 7.506))
+)
+
+intercepts <- data.frame(
+  Term = c("very low|low", "low|medium", "medium|high", "high|very high"),
+  Value = sprintf("%.4f", c(1.1835, 2.3072, 3.4049, 4.8313)),
+  `std.error` = sprintf("%.4f", c(0.5343, 0.5406, 0.5474, 0.5643)),
+  `t_value` = sprintf("%.4f", c(2.2151, 4.2677, 6.2201, 8.5609))
+)
+
+
+pander(coefficients, caption = "Regression Results: Coefficients")
+
+
+pander(intercepts, caption = "Regression Results: Intercepts")
+```
+
+
+```{r messgae=F,echo=F, warning=F, results=F}
+# Exponentiated Coefficients and P values
+
+
+coefficients_summary <- summary_model1$coefficients
 p_values <- 2 * (1 - pnorm(abs(coefficients_summary[, "t value"])))
 
 print("P values for all coefficients and intercepts")
@@ -154,28 +262,128 @@ exp(coef(model1))
 
 ```
 
-## Results
-The p-value for all of the coefficients is presented above. We can see that the p value for all of the coefficients are all smaller than 0.05. 
+
+```{r message=F,echo=F,warning=F}
+#table for p values and exponentiated coefficients 
+library(pander)
+
+p_values_df <- data.frame(
+  Predictors = c("parents are living together", "family size less or equal to 3", "number of absences", 
+           "weekly study time 2 to 5 hours", "weekly study time 5 to 10 hours",
+           "weekly study time larger than 10 hours", "final grade of the Portuguese class", 
+           "the student is in a romantic relationship", "bad current health status", 
+           "medium current health status", "good current health status", 
+           "very good current health status", "time going out with friends is low", 
+           "time going out with friends is medium", "time going out with friends is high", 
+           "time going out with friends is very high",
+               "very low|low", "low|medium", "medium|high", "high|very high"),
+  p_value = c(1.315645e-02, 2.262194e-03, 1.792861e-03, 5.765920e-04, 9.551868e-04, 4.603479e-03, 3.229552e-02,
+              5.365932e-01, 1.334781e-01, 4.116076e-02, 3.448171e-02, 4.812825e-03, 1.780111e-02, 5.087641e-05,
+              2.756765e-08, 6.128431e-14, 2.675291e-02, 1.975133e-05, 4.968956e-10, 0.000000e+00)
+)
+
+
+exp_coefficients_df <- data.frame(
+  Predictors = c("parents are living together", "family size less or equal to 3", "number of absences", 
+           "weekly study time 2 to 5 hours", "weekly study time 5 to 10 hours",
+           "weekly study time larger than 10 hours", "final grade of the Portuguese class", 
+           "the student is in a romantic relationship", "bad current health status", 
+           "medium current health status", "good current health status", 
+           "very good current health status", "time going out with friends is low", 
+           "time going out with friends is medium", "time going out with friends is high", 
+           "time going out with friends is very high"),
+  Exp_Coeff = c(1.8262297, 1.6491213, 1.0509724, 0.5536694, 0.4516184, 0.3400588, 0.9491285,
+                0.9081460, 1.5533369, 1.7407472, 1.7981273, 1.9664380, 2.3515650, 4.0729748, 7.4989664, 16.5291729)
+)
+
+
+panderOptions('table.split.table', Inf)
+panderOptions('table.style', 'rmarkdown')
+
+
+pander(p_values_df, caption = "P-values for all coefficients and intercepts")
+
+
+pander(exp_coefficients_df, caption = "Exponentiation of Coefficients")
+
+
+```
+
+The p-values for all of the coefficients are presented above. We can see that the p-values for all of the coefficients, except for the student who is in a romantic relationship and bad current health status, are all smaller than 0.05. 
 
 If we set the following,
-Null Hypothesis: The coefficients equal 0, which implies that the predictors have no effect on the log-odds of the outcome variable being in a particular category or above versus all lower categories combined. 
-Alternative Hypothesis: The coefficients do not equal 0, which implies that the predictors do have an effect on the log-odds of the outcome variable being in a particular category or above. 
+Null Hypothesis: The coefficients equal 0, which implies that the predictors have no effect on the log odds of the outcome variable being in a particular category or above versus all lower categories combined. 
+Alternative Hypothesis: The coefficients do not equal 0, which implies that the predictors do have an effect on the log odds of the outcome variable being in a particular category or above. 
 
-This suggests that the results are statistically significant and we reject the null hypothesis.
+This suggests that the results are statistically significant and we reject the null hypothesis except that the student is in a romantic relationship and bad current health status.
 
-We cannot conclude that better or tighter family relationships or smaller family sizes will not hinder secondary school students from drinking on weekends since we can see from the output that secondary students whose parents are living together have approximately 1.84 the odds of having the next higher weekend alcohol consumption category (e.g., 4 vs. 3, or 2 vs. 1, etc.) compared to secondary students whose parents are living apart and secondary students whose family size is less or equal to  3 have approximately 1.66 the odds of having the next higher weekend alcohol consumption category (e.g., 4 vs. 3, or 2 vs. 1, etc.) compared to secondary students whose family size is greater than 3, while controlling for other variables.
+In terms of family environment and family relationships, we can conclude that better or tighter family relationships or smaller family sizes will not hinder secondary school students from drinking on weekends. They are more likely to consume more alcohol on weekends. In fact, secondary school students whose parents are living together have approximately 1.83 the odds of having the next higher weekend alcohol consumption category compared to secondary students whose parents are living apart. In addition, secondary students whose family size is less or equal to  3 have approximately 1.65 the odds of having the next higher weekend alcohol consumption category compared to secondary students whose family size is greater than 3.
 
-We can conclude that secondary school students with better school performances are more likely to consume less alcohol during weekends. As the output data shows, for every 1 unit more increase in absences, the odds of being in the next higher weekend alcohol consumption category is multiplied by approximately 1.05, and for every 1 point increase in G3 (final grade of the Portuguese class), the odds of being in the next higher weekend alcohol consumption category is multiplied by approximately 0.95 , while controlling for other variables. We can also see that as study time increases, the odds of being in the next high weekend alcohol consumption category decreaseas, suggesting that better school performance is linked with less weekend alcohol consumption. 
+In terms of school performance, we can conclude that secondary school students with better school performances and longer study time are more likely to consume less alcohol during weekends. In specific, as the weekly study time for secondary school students increases, the odds of them being in the next higher weekend alcohol consumption category decreases. For every 1-point increase in the final grade of the Portuguese class, the odds of being in the next higher weekend alcohol consumption category is multiplied by approximately 0.95. However, for every 1 unit more increase in absences, the odds of being in the next higher weekend alcohol consumption category is multiplied by approximately 1.05, suggesting that poorer school performances are linked with more weekend alcohol consumption while better school performance are associated with lower weekend alcohol consumption levels.
 
-We can conclude secondary school students who are in romantic relationships are less like consume alcohol during weekends. We can see from the output that secondary students whose are in relationships have approximately 0.91 the odds of having the next higher weekend alcohol consumption category (e.g., 4 vs. 3, or 2 vs. 1, etc.) compared to secondary students whose are single.
 
-We can also conclude that secondary school students who are healthy and go out more often are morely likely to consume more alcohol during weekends as we can see that as health status and go out time increases, the odds of being in the nexr high weekend alcohol consumption category as increases, suggesting that students in good health conditions and who go out more often are linked with higher weekend alcohol consumption.
+In terms of personal relationships and health conditions, we can conclude that secondary school students who are healthy and go out with friends more often are more likely to consume more alcohol during weekends compared to those who are in very bad health conditions and spend a very little amount of time going out with friends. We can see that as health status improves and go-out time increases, the odds of being in the next high weekend alcohol consumption category also increase, suggesting that students in good health conditions and who go out more often are linked with higher weekend alcohol consumption.
+```{r message = F, echo=F, warning=F,results="hide"}
 
+library(caret)
+library(MASS)
+
+# Assuming 'alcohol' is your dataset and 'Walc' is your ordinal response variable
+set.seed(123)  # for reproducibility
+splitIndex <- createDataPartition(alcohol$Walc, p = 0.75, list = FALSE)
+train_data <- alcohol[splitIndex,]
+test_data <- alcohol[-splitIndex,]
+
+# Fit an ordinal regression model using polr
+model2 <- polr(factor(Walc) ~ Pstatus + famsize + absences + 
+                 studytime + G3 + romantic + health + goout, data = train_data, Hess=TRUE)
+
+# Predict probabilities on the test data
+predicted_probs <- predict(model2, test_data, type = "probs")
+
+# Get the index of the maximum probability to determine the predicted class
+predicted_indices <- apply(predicted_probs, 1, which.max)
+predicted_class <- factor(levels(train_data$Walc)[predicted_indices], levels = levels(train_data$Walc))
+
+# Calculate accuracy
+accuracy <- sum(predicted_class == test_data$Walc) / length(test_data$Walc)
+
+# Print accuracy
+print(paste("Accuracy:", accuracy))
+
+
+```
+```{r message = F, echo=F, warning=F,}
+# Load necessary libraries
+library(pander)
+
+# Create a data frame with accuracy information
+accuracy_data <- data.frame(
+  Metric = "Accuracy",
+  Value = 0.3875
+)
+
+# Convert the data frame to a Markdown table using pander
+pander(accuracy_data, caption = "Model Accuracy")
+```
+The predictive accuracy of the ordinal regression model, as assessed by the overall classification accuracy, is 0.3875 (38.75%). This metric was calculated by comparing the predicted alcohol consumption levels against the actual weekend alcohol consumption levels observed in the dataset. 
 
 ## Discussion
-In summary, for secondary school students, better family relationships does not necessarily guarantee a low weekend alcohol consumption level, however, better school performances are usually associated with lower weekend alcohol consumption. Secondary school students are taken are less likely to consume alcohol during weekends while students who are in good health status and go out more often are linked with higher weekend alcohol consumption levels.
 
-One of the biggest limitations of my analysis is that I have only looked at weenkend alcohol consumption levels while there is another categorical variables in the dataset Dalc, weekday alcohol consumption that I did not include into the analysis. As a result, I failed to analyze a secondary school student's weekly alcohol consumption level. Considering ways that the analysis could be improved is that I can create a new response variable that includes both weekday alcohol consumption levels and weekend alcohol consumption levels and name it Weekalc, setting my own categories of the variable.  This could also be an idea for future work, examing weekly alcohol consumption levels. In addition, there are many more socioeconomic information in the dataset that was not used in this analysis. More work including new predictors could be done to predict the weekend alcohol consumption level of a secondary school student. 
+For secondary school students, better family relationships do not necessarily guarantee a low weekend alcohol consumption level. In fact, secondary school students who have a smaller family size and tighter family relationships might consume more alcohol during weekends. However, better school performances are usually associated with lower weekend alcohol consumption. In addition, students who are in good health status and go out with friends more often are linked with higher weekend alcohol consumption levels.
 
+In summary, high levels of weekend alcohol consumption levels for secondary school students are linked with a better family environment, tighter family relationships, smaller family size, worse school performance, shorter study time, better health conditions, and more time spent going out with friends.
 
+One of the biggest limitations of this analysis is that it has an exclusive focus on weekend alcohol consumption levels neglecting the weekday alcohol consumption data (Dalc) available in the dataset. As a result, this analysis failed to comprehensively analyze a secondary school student's weekly alcohol consumption level. Considering ways that the analysis could be improved, a new response variable named Weekalc that includes both weekday alcohol consumption levels and weekend alcohol consumption levels can be created to represent the weekly alcohol consumption level of secondary school students.New categories of the variable can be set, such as very low for secondary school students whose weekend alcohol consumption and weekday alcohol consumption are both very low. This could also be an idea for future work, examining weekly alcohol consumption levels. Furthermore, the dataset contains extensive socioeconomic information that remains unexplored in the current analysis. The relatively low accuracy indicates potential areas for improvement as well. It suggests that the model might be underfitting or lacking in relevant predictors that capture the complexities of alcohol consumption behavior among secondary school students. Both of the problems can be solved by including new predictors in the model to predict the weekend alcohol consumption level of a secondary school student. Incorporating these additional predictors could enhance the model's ability to predict alcohol consumption patterns more accurately.
+
+## Citations
+CDC. (2024, April 16). Underage drinking. Centers for Disease Control and Prevention. https://www.cdc.gov/alcohol/fact-sheets/underage-drinking.htm 
+
+McNulty, K. (2021b, January 1). Proportional Odds Logistic Regression for Ordered Category Outcomes: Handbook of Regression Modeling in people analytics: With examples in R, python and julia.  https://peopleanalytics-regression-book.org/ord-reg.html#wald 
+
+SAMHSA. (2022). Why Your Child Might Start Drinking Alcohol.
+
+https://www.samhsa.gov/sites/default/files/why-child-might-start-drinking_0.pdf 
+
+UCI Machine Learning. (2016, October 19). Student Alcohol Consumption. Kaggle. https://www.kaggle.com/datasets/uciml/student-alcohol-consumption 
  
